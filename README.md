@@ -13,6 +13,12 @@ fråga → Redpine-anrop → svar till användaren
 
 Pipelinen använder en förenklad version av CAAR-logiken för att klassificera och score varje fråga, inte den riktiga algoritmen, men strukturen är där om man vill bygga vidare.
 
+## En vanlig AI utan Redpine söker på webben och får tillbaka artiklar. Vi skrapar dem, chunkar ner dem och sparar i två lager:
+
+1. `web_cache.json` , råa chunks från artiklarna, läsbart format
+2. Qdrant (SQLite lokalt), samma chunks vektoriserade för semantisk sökning
+
+
 ## Resultat
 
 På en fråga om trending companies och sentiment:
