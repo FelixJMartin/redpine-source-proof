@@ -1,19 +1,19 @@
-# redpine-source-proof
+# redpine-source-proof-feature
 
 En liten feature-idé: visa användare varför Redpine är värt det genom att jämföra med det bästa det öppna webben kan erbjuda, sida vid sida, på begäran.
 
 ## Hur det fungerar
 
-Två anrop körs parallellt vid varje fråga. Redpines svar går direkt till användaren. Webb-RAG-resultatet sparas tyst i bakgrunden i en Qdrant vektordatabas. Om användaren undrar "är det här värt det?" kan man i workbenchen jämföra Redpines data mot de webbartiklar som en vanlig AI hade hittat, evaluerade mot ett antal ( kan vara hur många man vill ) auto-genererade frågor om samma data.
+Två anrop körs parallellt vid varje fråga. Redpines svar går direkt till användaren. Webb-RAG-resultatet sparas tyst i bakgrunden i en Qdrant vektordatabas. Om användaren undrar "hur står denna data mot att scrapa nätet" kan man i workbenchen jämföra Redpines data mot de webbartiklar som en vanlig AI hade hittat, evaluerade mot ett antal ( kan vara hur många man vill ) auto-genererade frågor om samma data.
 
 ```
 fråga → Redpine-anrop → svar till användaren
       → webb-skrapning → chunkas → embeddar → Qdrant → "Varför Redpine?"-panel
 ```
 
-Pipelinen använder en förenklad version av CAAR-logiken för att klassificera och score varje fråga, inte den riktiga algoritmen, men strukturen är där om man vill bygga vidare.
+Pipelinen använder en förenklad version av CAAR-logiken för att klassificera och score varje fråga, inte den riktiga algoritmen, men strukturen är där om man vill bygga vidare, gick utefter min förståelse av vad som ska evalueras. 
 
-## En vanlig AI utan Redpine söker på webben och får tillbaka artiklar. Vi skrapar dem, chunkar ner dem och sparar i två lager:
+## En vanlig AI utan Redpine söker på webben och får tillbaka artiklar. Algoritmen skrapar dem, chunkar ner dem och sparar i två lager:
 
 1. `web_cache.json` , råa chunks från artiklarna, läsbart format
 2. Qdrant (SQLite lokalt), samma chunks vektoriserade för semantisk sökning
@@ -21,15 +21,15 @@ Pipelinen använder en förenklad version av CAAR-logiken för att klassificera 
 
 ## Resultat
 
-På en fråga om trending companies och sentiment:
+På en fråga om trending companies och sentiment som jag körde genom att använda redpines dara om media samt scrapa nätet och artiklar. 
 - Redpine: 8/10 — specifika företag, exakta siffror, realtidsdata
 - Webb RAG: 1/10 — "Trump administration och WSJ"
 
 Över 10 auto-genererade följdfrågor baserade på faktisk data:
-- Redpine snitt: 2.2/10
+- Redpine snitt: 6.2/10
 - Webb snitt: 0.3/10
 
-Webben klarade knappt en enda specifik följdfråga. I testet användes Groq API mot claude tillsammans me redpine.
+Webben klarade knappt en enda specifik följdfråga. I testet användes Groq API mot claude tillsammans me redpine. Kan implemetera flera API:er för fullständig jämförelse.
 
 ## Kör det
 
