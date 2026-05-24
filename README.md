@@ -15,7 +15,7 @@ Pipelinen använder en förenklad version av CAAR-logiken för att klassificera 
 
 ## En vanlig AI utan Redpine söker på webben och får tillbaka artiklar. Algoritmen skrapar dem, chunkar ner dem och sparar i två lager:
 
-1. `web_cache.json` , råa chunks från artiklarna, läsbart format
+1. `web_cache.json` , råa chunks från artiklarna, läsbart format för att se vad vanilla modeller finner för data på nätet. 
 2. Qdrant (SQLite lokalt), samma chunks vektoriserade för semantisk sökning
 
 
