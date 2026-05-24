@@ -4,7 +4,7 @@ En liten feature-idé: visa användare varför Redpine är värt det genom att j
 
 ## Hur det fungerar
 
-Två anrop körs parallellt vid varje fråga. Redpines svar går direkt till användaren. Webb-RAG-resultatet sparas tyst i bakgrunden i en Qdrant vektordatabas. Om användaren undrar "hur står denna data mot att scrapa nätet" kan man i workbenchen jämföra Redpines data mot de webbartiklar som en vanlig AI hade hittat, evaluerade mot ett antal ( kan vara hur många man vill ) auto-genererade frågor om samma data.
+Två anrop körs parallellt vid varje fråga. Redpines svar går direkt till användaren där användaren får sina svar direkt. Webb-RAG-resultatet sparas tyst i bakgrunden i en Qdrant vektordatabas. Om användaren undrar "hur står denna data mot att scrapa nätet" kan man i workbenchen jämföra Redpines data mot de webbartiklar som en vanlig AI hade hittat, evaluerade mot ett antal ( kan vara hur många man vill ) auto-genererade frågor om samma data, där man kan evaluera datan mot varandra efter Redpines CAAR metoder. .
 
 ```
 fråga → Redpine-anrop → svar till användaren
@@ -18,9 +18,9 @@ Pipelinen använder en förenklad version av CAAR-logiken för att klassificera 
 1. `web_cache.json` , råa chunks från artiklarna, läsbart format för att se vad vanilla modeller finner för data på nätet. 
 2. Qdrant (SQLite lokalt), samma chunks vektoriserade för semantisk sökning
 
-
 ## Resultat
 
+Sen genererar en AI moddel hur många frågor man vill om dessa databaser, från oliak synvinklar, kunna ställa frågor av olika karaktär och fokus. Denna systematik är skalbar och kan verkligen stresstesta dataseten.
 På en fråga om trending companies och sentiment som jag körde genom att använda redpines dara om media samt scrapa nätet och artiklar. 
 - Redpine: 8/10 — specifika företag, exakta siffror, realtidsdata
 - Webb RAG: 1/10 — "Trump administration och WSJ"
