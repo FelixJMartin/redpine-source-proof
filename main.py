@@ -1,3 +1,4 @@
+# Import
 import os
 import json
 import uuid
@@ -16,7 +17,7 @@ REDPINE_KEY = os.getenv("REDPINE_API_KEY")
 groq = Groq(api_key=os.getenv("GROQ_API_KEY"))
 embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
 
-# ── Qdrant setup — två collections ──────────────────────────────────────────
+# Qdrant setup: two collections for web chunks and evaluations
 qclient = QdrantClient(path="./qdrant_db")
 
 for col in ["web_chunks", "evaluations"]:
@@ -29,8 +30,12 @@ qclient.create_collection("web_chunks",    vectors_config=VectorParams(size=384,
 qclient.create_collection("evaluations",   vectors_config=VectorParams(size=384, distance=Distance.COSINE))
 print("[Qdrant] Collections ready: web_chunks, evaluations")
 
-# ── LLM helper ───────────────────────────────────────────────────────────────
-def ask(prompt, max_tokens=600):
+
+
+
+def ask(prompt
+        , max_tokens=600):
+    """Send a prompt to the Groq chat model and return the text response."""
     res = groq.chat.completions.create(
         model="llama-3.3-70b-versatile",
         max_tokens=max_tokens,
@@ -38,8 +43,9 @@ def ask(prompt, max_tokens=600):
     )
     return res.choices[0].message.content.strip()
 
-# ── 1. REDPINE FETCH ─────────────────────────────────────────────────────────
+# 1Redpine fetch
 def fetch_redpine():
+    """Fetch trending licensed media data from the Redpine API."""
     print("\n[Redpine] Fetching licensed media data...")
     res = requests.post(
         "https://api.redpine.ai/api/v1/tools/media/trending",
@@ -50,8 +56,9 @@ def fetch_redpine():
     print(f"[Redpine] Got {len(str(data))} bytes of licensed data")
     return data
 
-# ── 2. WEB SCRAPE + QDRANT ───────────────────────────────────────────────────
+# Web scraping and Qdrant
 def scrape(url):
+    """Download a URL and return cleaned text (shortened to 3k chars)."""
     try:
         r = requests.get(url, timeout=8)
         soup = BeautifulSoup(r.text, "html.parser")
@@ -62,6 +69,7 @@ def scrape(url):
         return ""
 
 def build_web_rag(query):
+    """Discover URLs via LLM, scrape them, chunk text, embed and store in Qdrant."""
     print(f"\n[Web] Finding sources for: '{query}'")
 
     urls_raw = ask(f"Give me 5 real URLs of recent news articles about: {query}. Return only a JSON array of URLs, nothing else.")
@@ -94,12 +102,14 @@ def build_web_rag(query):
     return points
 
 def retrieve_web(query, k=5):
+    """Retrieve top-k web chunks from Qdrant for the given query."""
     vec = embeddings.embed_query(query)
     results = qclient.query_points(collection_name="web_chunks", query=vec, limit=k).points
     return [r.payload for r in results]
 
-# ── 3. CAAR — Context-Aware Adaptive Reranking ───────────────────────────────
+# CAAR
 def caar_classify(query):
+    """Use the LLM to classify the query into RECENCY, DEPTH, or AUTHORITY."""
     raw = ask(f"""Classify this query into exactly one of these context classes:
 - RECENCY: needs current, real-time, or recent data
 - DEPTH: needs technical detail, domain expertise, or research
@@ -115,6 +125,7 @@ Return only one word: RECENCY, DEPTH, or AUTHORITY""", max_tokens=10)
     return cls
 
 def caar_score(answer, context_class, source):
+    """Score an answer 0-10 for a given context class using the LLM."""
     criteria = {
         "RECENCY":   "real-time data, specific dates, current figures, live metrics",
         "DEPTH":     "technical terms, domain specificity, detailed analysis, precise numbers",
@@ -137,8 +148,9 @@ Return only a number 0-10, nothing else.""", max_tokens=5)
     print(f"[CAAR] {source} score ({context_class}): {score}/10")
     return score
 
-# ── 4. GENERATE ANSWERS ──────────────────────────────────────────────────────
+# Generate answers from Redpine data and web context
 def generate_answers(query, redpine_data, web_chunks):
+    """Produce answers using licensed Redpine data and retrieved web context."""
     context = "\n\n".join([c["content"] for c in web_chunks])
 
     redpine_answer = ask(f"""Summarize this licensed real-time data to answer: {query}
@@ -151,8 +163,9 @@ Context: {context[:2000]}""")
 
     return redpine_answer, web_answer
 
-# ── 5. SAVE EVALUATION TO QDRANT ─────────────────────────────────────────────
+# Save evaluation to Qdrant
 def save_evaluation(query, context_class, redpine_answer, web_answer, r_score, w_score):
+    """Store a comparative evaluation of Redpine vs web answers in Qdrant."""
     why = ask(f"""In 2 sentences, explain why {
         'Redpine' if r_score > w_score else 'the open web'
     } scored higher for this {context_class} query.
@@ -178,8 +191,9 @@ Query: {query}""")
     print(f"[Qdrant] Evaluation saved")
     return why
 
-# ── 6. PRINT RESULTS ─────────────────────────────────────────────────────────
+# Print results to console
 def print_results(query, context_class, redpine_answer, web_answer, r_score, w_score, why):
+    """Pretty-print query, scores, answers, and the winning source."""
     winner = "REDPINE" if r_score > w_score else "OPEN WEB"
 
     print("\n" + "="*60)
@@ -201,6 +215,7 @@ def print_results(query, context_class, redpine_answer, web_answer, r_score, w_s
 
 
 def followup_eval(query, redpine_data, context_class):
+    """Generate follow-up questions from Redpine data and evaluate them against Qdrant."""
     print("\n[Followup] Generating 10 follow-up questions...")
     
     raw = ask(f"""Based on this ACTUAL data:
@@ -235,8 +250,8 @@ Return only a JSON array of strings, nothing else.""")
         print(f"  Q: {q[:60]}")
         print(f"  Redpine: {r_score}/10  Web: {w_score}/10\n")
 
-    avg_r = sum(r["redpine_score"] for r in results) / len(results)
-    avg_w = sum(r["web_score"] for r in results) / len(results)
+    avg_r = sum(r["redpine_score"] for r in results) / len(results) if results else 0
+    avg_w = sum(r["web_score"] for r in results) / len(results) if results else 0
     
     print("="*60)
     print(f"FOLLOWUP SUMMARY — {len(results)} questions")
@@ -246,7 +261,7 @@ Return only a JSON array of strings, nothing else.""")
     print("="*60)
 
 
-# ── RUN ───────────────────────────────────────────────────────────────────────
+# Main execution
 if __name__ == "__main__":
     query = "which companies are trending in media right now and what is the sentiment"
 
